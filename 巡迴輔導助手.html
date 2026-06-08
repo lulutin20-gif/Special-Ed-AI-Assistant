@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特教巡迴輔導智慧紀錄系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-md shadow-indigo-200">
+                    <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">特教巡迴輔導智慧紀錄助手</h1>
+                    <p class="text-[11px] text-slate-500 font-medium">語音轉譯 · IEP 智慧摘要 · 情巡/自巡教師專用</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Gemini AI 支援
+                </span>
+                <!-- 設定按鈕 -->
+                <button onclick="openSettingsModal()" class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors" title="設定 API Key">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 左側：學生選擇與設定 (4 columns) -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- 學生名冊卡片 -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-md font-bold text-slate-900 flex items-center">
+                            <i data-lucide="users" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                            輔導學生清單
+                        </h2>
+                        <button onclick="openAddStudentModal()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center bg-indigo-50 px-2 py-1 rounded-md transition-colors">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 mr-0.5"></i>新增
+                        </button>
+                    </div>
+
+                    <!-- 搜尋 -->
+                    <div class="relative mb-4">
+                        <input type="text" id="searchStudent" placeholder="搜尋學生或類別..." class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                    </div>
+
+                    <!-- 學生列表容器 -->
+                    <div class="space-y-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar" id="studentListContainer">
+                        <!-- 動態載入學生 -->
+                    </div>
+                </div>
+
+                <!-- 錄音與處理說明 -->
+                <div class="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6 border border-indigo-100/50 shadow-inner">
+                    <h3 class="text-sm font-bold text-indigo-900 mb-3 flex items-center">
+                        <i data-lucide="lightbulb" class="w-4 h-4 mr-2 text-amber-500"></i>
+                        如何產生高品質紀錄？
+                    </h3>
+                    <ul class="text-[13px] text-indigo-800/80 space-y-2.5">
+                        <li class="flex items-start"><i data-lucide="check-circle-2" class="w-4 h-4 mr-1.5 mt-0.5 text-indigo-400 shrink-0"></i>輔導結束後，花 2 分鐘用語音口述描述學生的狀況。</li>
+                        <li class="flex items-start"><i data-lucide="check-circle-2" class="w-4 h-4 mr-1.5 mt-0.5 text-indigo-400 shrink-0"></i>例如：「小明今天因為排隊問題打同學，我使用了社會故事引導...」</li>
+                        <li class="flex items-start"><i data-lucide="check-circle-2" class="w-4 h-4 mr-1.5 mt-0.5 text-indigo-400 shrink-0"></i>AI 會自動將口語內容轉化為專業的 IEP 報告術語！</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右側：語音處理與紀錄生成區 (8 columns) -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- 語音上傳與錄製面板 -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    
+                    <h2 class="text-lg font-bold text-slate-900 mb-6 flex items-center relative z-10">
+                        <i data-lucide="mic" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                        第一步：提供輔導紀錄來源
+                    </h2>
+
+                    <!-- 選擇錄製或上傳切換 -->
+                    <div class="grid grid-cols-2 gap-4 mb-6 relative z-10">
+                        <button id="tabRecord" onclick="switchInputTab('record')" class="py-3 px-4 rounded-xl border-2 border-indigo-600 text-indigo-700 font-medium text-sm flex items-center justify-center space-x-2 bg-indigo-50/50 transition-all">
+                            <i data-lucide="mic-vocal" class="w-4 h-4"></i>
+                            <span>現場錄製口述</span>
+                        </button>
+                        <button id="tabUpload" onclick="switchInputTab('upload')" class="py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm flex items-center justify-center space-x-2 hover:bg-slate-50 hover:border-slate-300 transition-all">
+                            <i data-lucide="file-audio" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">上傳語音檔案</span>
+                            <span class="sm:hidden">上傳檔案</span>
+                        </button>
+                    </div>
+
+                    <!-- 錄音介面 -->
+                    <div id="recordSection" class="border border-slate-100 rounded-xl p-8 bg-slate-50/50 text-center space-y-5 relative z-10">
+                        <div class="flex justify-center">
+                            <div id="recordPulse" class="w-24 h-24 bg-slate-200/60 rounded-full flex items-center justify-center transition-all duration-300">
+                                <button id="recordBtn" class="w-16 h-16 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-red-200 transition-all shadow-md shadow-red-200">
+                                    <i data-lucide="mic" class="w-7 h-7" id="micIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <p class="text-sm font-semibold text-slate-700" id="recordStatusText">點擊紅色按鈕開始錄音</p>
+                            <p class="text-2xl font-mono text-slate-400 font-bold tracking-wider" id="recordTimer">00:00</p>
+                        </div>
+                        <div class="hidden flex justify-center w-full pt-4" id="audioPlaybackContainer">
+                            <audio id="audioPlayback" controls class="w-full max-w-md h-10 rounded-lg"></audio>
+                        </div>
+                    </div>
+
+                    <!-- 上傳介面 -->
+                    <div id="uploadSection" class="hidden border-2 border-dashed border-slate-300 rounded-xl p-10 text-center space-y-4 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer relative z-10" onclick="document.getElementById('audioFileInput').click()">
+                        <input type="file" id="audioFileInput" accept="audio/*" class="hidden" onchange="handleAudioUpload(event)">
+                        <div class="flex justify-center">
+                            <div class="p-4 bg-white shadow-sm border border-slate-100 rounded-full text-indigo-500">
+                                <i data-lucide="cloud-upload" class="w-8 h-8"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700" id="uploadFileName">點擊或拖曳您的語音檔案至此處</p>
+                            <p class="text-xs text-slate-400 mt-2">支援 mp3, wav, m4a 等常見格式 (上限 20MB)</p>
+                        </div>
+                    </div>
+
+                    <!-- 備用文字輸入 -->
+                    <div class="mt-5 pt-5 border-t border-slate-100 relative z-10">
+                        <details class="text-xs text-slate-500 cursor-pointer group">
+                            <summary class="hover:text-indigo-600 font-medium transition-colors outline-none flex items-center">
+                                <i data-lucide="keyboard" class="w-4 h-4 mr-1.5"></i>
+                                不想錄音？展開直接貼上「草稿文字」讓 AI 重新整理
+                            </summary>
+                            <div class="mt-3">
+                                <textarea id="fallbackTextInput" rows="4" placeholder="例如：小明今天來心裡很不爽，因為打掃時間被同學激怒。本來想抓狂打人，我把他拉到角落給他深呼吸... (可將任意隨筆貼上)" class="w-full p-3 border border-slate-200 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-sm bg-slate-50/50"></textarea>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- 送出轉換按鈕 -->
+                    <div class="mt-6 flex justify-end relative z-10">
+                        <button id="generateBtn" onclick="processCounselingRecord()" class="w-full sm:w-auto bg-slate-900 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-indigo-200/50 transition-all flex items-center justify-center space-x-2">
+                            <i data-lucide="wand-sparkles" class="w-4 h-4"></i>
+                            <span>開始智慧生成 IEP 紀錄</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 狀態提示 / 生成中 -->
+                <div id="loadingContainer" class="hidden bg-white rounded-2xl p-10 border border-slate-200 shadow-sm text-center space-y-5">
+                    <div class="flex justify-center">
+                        <div class="relative w-16 h-16">
+                            <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                            <div class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+                            <i data-lucide="brain" class="absolute inset-0 m-auto w-6 h-6 text-indigo-600 animate-pulse"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <p class="text-base font-bold text-slate-800">Gemini AI 正在分析輔導語音中...</p>
+                        <p class="text-xs text-slate-500">正在進行「語意潤飾」與「IEP 架構智慧摘要」，這可能需要 10-20 秒，請勿關閉視窗。</p>
+                    </div>
+                </div>
+
+                <!-- 生成結果展示面版 -->
+                <div id="resultContainer" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="bg-indigo-900 px-6 py-4 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-1.5 bg-indigo-800/50 rounded-lg">
+                                <i data-lucide="file-check-2" class="w-5 h-5 text-indigo-300"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-sm" id="resultTitle">學生輔導紀錄 - 待確認草稿</h3>
+                                <p class="text-[11px] text-indigo-300 font-medium mt-0.5" id="resultSubtitle">輔導對象：無</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2 self-end sm:self-auto">
+                            <button onclick="copyToClipboard()" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                <span>複製格式</span>
+                            </button>
+                            <button onclick="saveRecord()" class="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 px-3 py-2 rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                <span>存入歷史</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 雙欄比對：逐字稿 vs 結構化紀錄 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 flex-grow">
+                        <!-- 左半：語音逐字稿 -->
+                        <div class="p-6 flex flex-col space-y-3 bg-slate-50/30">
+                            <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5 mr-1.5"></i> 語意潤飾逐字稿
+                            </h4>
+                            <div class="bg-white rounded-xl p-4 border border-slate-200 text-[13px] leading-relaxed text-slate-600 overflow-y-auto custom-scrollbar flex-grow min-h-[300px] max-h-[500px]" id="transcriptOutput" contenteditable="true">
+                                這裡將顯示 AI 轉譯後的內容...
+                            </div>
+                        </div>
+
+                        <!-- 右半：結構化特教紀錄 -->
+                        <div class="p-6 flex flex-col space-y-3 bg-white">
+                            <h4 class="text-[11px] font-bold text-indigo-500 uppercase tracking-wider flex items-center">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 mr-1.5 text-indigo-400"></i> IEP 結構化輔導報告
+                            </h4>
+                            <div class="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100/60 text-[13px] leading-relaxed text-slate-800 overflow-y-auto custom-scrollbar flex-grow min-h-[300px] max-h-[500px]" id="structuredOutput" contenteditable="true">
+                                這裡將顯示自動生成的特教格式報告...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 歷史儲存紀錄 (當前學生) -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <h3 class="text-md font-bold text-slate-900 mb-4 flex items-center">
+                        <i data-lucide="history" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                        本生輔導歷史紀錄
+                    </h3>
+                    <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar" id="historyListContainer">
+                        <!-- 動態載入歷史 -->
+                        <p class="text-sm text-slate-400 py-4 text-center">暫無此學生的歷史輔導紀錄</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- API 金鑰設定模態視窗 -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl transform scale-95 transition-transform duration-300" id="settingsModalContent">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i data-lucide="key" class="w-5 h-5 mr-2 text-indigo-600"></i> 系統設定 (API Key)
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed">
+                    為了讓系統能獨立運作並將語音傳送給 AI 分析，請輸入您的 Google Gemini API Key。此金鑰僅會保存在您當前瀏覽器中，不會上傳至任何第三方伺服器。
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Gemini API Key</label>
+                    <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono shadow-sm">
+                </div>
+                <div class="text-[11px] text-slate-500 flex justify-between">
+                    <span>不知道如何獲取？</span>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-600 hover:underline font-medium flex items-center">
+                        前往 Google AI Studio 申請 <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">取消</button>
+                <button onclick="saveApiKey()" class="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增學生模態視窗 -->
+    <div id="addStudentModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl transform scale-95 transition-transform duration-300" id="addStudentModalContent">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-900">新增巡迴輔導學生</h3>
+                <button onclick="closeAddStudentModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">學生代號/姓名</label>
+                    <input type="text" id="newStudentName" placeholder="例如：小明" class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">學校與班級</label>
+                    <input type="text" id="newStudentSchool" placeholder="例如：中山國小 三年二班" class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">主要障礙類別</label>
+                    <select id="newStudentType" class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white">
+                        <option value="情緒行為障礙 (EBD)">情緒行為障礙 (EBD)</option>
+                        <option value="自閉症 (ASD)">自閉症 (ASD)</option>
+                        <option value="注意力不足過動症 (ADHD)">注意力不足過動症 (ADHD)</option>
+                        <option value="學習障礙 (LD)">學習障礙 (LD)</option>
+                        <option value="智能障礙 (ID)">智能障礙 (ID)</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-3">
+                <button onclick="closeAddStudentModal()" class="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">取消</button>
+                <button onclick="saveNewStudent()" class="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors">儲存學生</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂通知 Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 sm:bottom-8 sm:right-8 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center space-x-3 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none border border-slate-700">
+        <i data-lucide="info" class="w-5 h-5 text-indigo-400" id="toastIcon"></i>
+        <span class="text-sm font-medium" id="toastText">通知訊息</span>
+    </div>
+
+    <style>
+        /* 捲軸美化 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+    </style>
+
+    <script>
+        // 系統常數 - Gemini API (優先讀取 LocalStorage，若無則使用環境變數)
+        const platformApiKey = ""; // 執行階段由平台提供 (如有)
+        
+        // 取得有效 API Key 的方法
+        function getEffectiveApiKey() {
+            const localKey = localStorage.getItem('gemini_api_key_special_ed');
+            return localKey && localKey.trim() !== '' ? localKey : platformApiKey;
+        }
+
+        // 初始化 Mock 學生資料
+        let students = [
+            { id: "s1", name: "小明", school: "成功國小 三年甲班", type: "自閉症 (ASD)", active: true },
+            { id: "s2", name: "小華", school: "大安國小 五年乙班", type: "情緒行為障礙 (EBD)", active: false }
+        ];
+
+        let savedRecords = [];
+        let selectedStudentId = "s1";
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordTimerInterval;
+        let recordSeconds = 0;
+        let uploadedAudioBase64 = null;
+        let uploadedAudioMimeType = null;
+        let currentTab = 'record';
+
+        window.onload = function() {
+            lucide.createIcons();
+            renderStudents();
+            renderHistory(selectedStudentId);
+            initWebAudio();
+            
+            // 檢查是否沒有 API Key，可適時提醒
+            if (!getEffectiveApiKey()) {
+                setTimeout(() => {
+                    showToast("提醒：尚未設定 API Key，請點擊右上角⚙️圖示設定", true);
+                }, 2000);
+            }
+        };
+
+        /* --- UI 與通知邏輯 --- */
+        function showToast(text, isWarning = false) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastText.textContent = text;
+            if (isWarning) {
+                toast.classList.replace('bg-slate-900', 'bg-red-900');
+                toast.classList.replace('border-slate-700', 'border-red-800');
+                toastIcon.setAttribute('data-lucide', 'alert-circle');
+                toastIcon.classList.replace('text-indigo-400', 'text-red-300');
+            } else {
+                toast.classList.replace('bg-red-900', 'bg-slate-900');
+                toast.classList.replace('border-red-800', 'border-slate-700');
+                toastIcon.setAttribute('data-lucide', 'check-circle');
+                toastIcon.classList.replace('text-red-300', 'text-emerald-400');
+            }
+            lucide.createIcons();
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 4000);
+        }
+
+        /* --- API 設定視窗邏輯 --- */
+        function openSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            const content = document.getElementById('settingsModalContent');
+            document.getElementById('geminiApiKeyInput').value = localStorage.getItem('gemini_api_key_special_ed') || '';
+            
+            modal.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            const content = document.getElementById('settingsModalContent');
+            
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('geminiApiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key_special_ed', key);
+                showToast("API Key 已成功儲存！");
+            } else {
+                localStorage.removeItem('gemini_api_key_special_ed');
+                showToast("API Key 已清除。");
+            }
+            closeSettingsModal();
+        }
+
+        /* --- 學生列表與歷史紀錄 --- */
+        function renderStudents() {
+            const container = document.getElementById('studentListContainer');
+            const searchVal = document.getElementById('searchStudent').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filtered = students.filter(s => 
+                s.name.toLowerCase().includes(searchVal) || 
+                s.type.toLowerCase().includes(searchVal) ||
+                s.school.toLowerCase().includes(searchVal)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">找不到匹配的學生</p>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                const isActive = s.id === selectedStudentId;
+                const div = document.createElement('div');
+                div.className = `p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    isActive 
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200' 
+                    : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50 text-slate-700'
+                }`;
+                div.onclick = () => selectStudent(s.id);
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-bold text-sm tracking-wide">${s.name}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            isActive ? 'bg-indigo-700 text-indigo-50 border border-indigo-500' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }">${s.type.split(' ')[0]}</span>
+                    </div>
+                    <p class="text-[11px] opacity-90 flex items-center">
+                        <i data-lucide="map-pin" class="w-3 h-3 mr-1 inline"></i>${s.school}
+                    </p>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        document.getElementById('searchStudent').oninput = renderStudents;
+
+        function selectStudent(id) {
+            selectedStudentId = id;
+            students.forEach(s => s.active = s.id === id);
+            renderStudents();
+            renderHistory(id);
+            
+            const student = students.find(s => s.id === id);
+            showToast(`已切換至：${student.name}`);
+            document.getElementById('resultContainer').classList.add('hidden');
+        }
+
+        function renderHistory(studentId) {
+            const container = document.getElementById('historyListContainer');
+            container.innerHTML = '';
+
+            const records = savedRecords.filter(r => r.studentId === studentId);
+            if (records.length === 0) {
+                container.innerHTML = `<div class="py-8 text-center"><i data-lucide="inbox" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i><p class="text-xs text-slate-400">尚無歷史紀錄</p></div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            records.forEach(r => {
+                const card = document.createElement('div');
+                card.className = "border border-slate-100 rounded-xl p-4 bg-slate-50/50 hover:bg-slate-100 transition-colors shadow-sm";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2">
+                        <span class="text-xs font-bold text-slate-600 flex items-center">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1.5 text-indigo-400"></i> ${r.date}
+                        </span>
+                        <div class="flex space-x-2">
+                            <button onclick="loadHistoryToPanel('${r.id}')" class="text-xs bg-white border border-slate-200 px-2 py-1 rounded text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 font-medium transition-all">檢視</button>
+                            <button onclick="deleteHistoryRecord('${r.id}')" class="text-xs bg-white border border-slate-200 px-2 py-1 rounded text-red-500 hover:border-red-200 hover:bg-red-50 font-medium transition-all">刪除</button>
+                        </div>
+                    </div>
+                    <div class="text-[12px] text-slate-500 line-clamp-2 leading-relaxed">
+                        ${r.summary.replace(/#/g, '').replace(/\*/g, '').slice(0, 80)}...
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function loadHistoryToPanel(recordId) {
+            const rec = savedRecords.find(r => r.id === recordId);
+            if (!rec) return;
+
+            const student = students.find(s => s.id === rec.studentId);
+            document.getElementById('resultTitle').textContent = `歷史輔導紀錄 (${rec.date})`;
+            document.getElementById('resultSubtitle').textContent = `輔導對象：${student.name} (${student.type})`;
+
+            document.getElementById('transcriptOutput').innerHTML = rec.transcript;
+            document.getElementById('structuredOutput').innerHTML = rec.summary;
+
+            document.getElementById('resultContainer').classList.remove('hidden');
+            document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            showToast("歷史紀錄已載入面板");
+        }
+
+        function deleteHistoryRecord(recordId) {
+            savedRecords = savedRecords.filter(r => r.id !== recordId);
+            renderHistory(selectedStudentId);
+            showToast("紀錄已刪除");
+        }
+
+        /* --- 錄音與上傳 --- */
+        function switchInputTab(tab) {
+            currentTab = tab;
+            const tabRecord = document.getElementById('tabRecord');
+            const tabUpload = document.getElementById('tabUpload');
+            const recordSec = document.getElementById('recordSection');
+            const uploadSec = document.getElementById('uploadSection');
+
+            const activeClass = "py-3 px-4 rounded-xl border-2 border-indigo-600 text-indigo-700 font-medium text-sm flex items-center justify-center space-x-2 bg-indigo-50/50 transition-all";
+            const inactiveClass = "py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm flex items-center justify-center space-x-2 hover:bg-slate-50 hover:border-slate-300 transition-all";
+
+            if (tab === 'record') {
+                tabRecord.className = activeClass;
+                tabUpload.className = inactiveClass;
+                recordSec.classList.remove('hidden');
+                uploadSec.classList.add('hidden');
+            } else {
+                tabUpload.className = activeClass;
+                tabRecord.className = inactiveClass;
+                uploadSec.classList.remove('hidden');
+                recordSec.classList.add('hidden');
+            }
+        }
+
+        async function initWebAudio() {
+            const recordBtn = document.getElementById('recordBtn');
+            recordBtn.onclick = async () => {
+                if (!isRecording) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        
+                        // 優化相容性：判斷設備支援的錄音格式 (iOS Safari 支援 mp4/aac)
+                        let options = {};
+                        if (MediaRecorder.isTypeSupported('audio/webm')) {
+                            options = { mimeType: 'audio/webm' };
+                        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                            options = { mimeType: 'audio/mp4' };
+                        }
+                        
+                        mediaRecorder = new MediaRecorder(stream, options);
+                        audioChunks = [];
+
+                        mediaRecorder.ondataavailable = event => {
+                            audioChunks.push(event.data);
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            
+                            const audioPlayback = document.getElementById('audioPlayback');
+                            audioPlayback.src = audioUrl;
+                            document.getElementById('audioPlaybackContainer').classList.remove('hidden');
+
+                            const reader = new FileReader();
+                            reader.readAsDataURL(audioBlob);
+                            reader.onloadend = () => {
+                                uploadedAudioBase64 = reader.result.split(',')[1];
+                                uploadedAudioMimeType = audioBlob.type;
+                            };
+                        };
+
+                        mediaRecorder.start();
+                        isRecording = true;
+                        startTimer();
+                        updateRecordUI(true);
+                    } catch (err) {
+                        showToast("無法獲取麥克風權限，請確認瀏覽器安全性設定。", true);
+                        console.error(err);
+                    }
+                } else {
+                    mediaRecorder.stop();
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    isRecording = false;
+                    stopTimer();
+                    updateRecordUI(false);
+                }
+            };
+        }
+
+        function updateRecordUI(recording) {
+            const pulse = document.getElementById('recordPulse');
+            const micIcon = document.getElementById('micIcon');
+            const statusText = document.getElementById('recordStatusText');
+
+            if (recording) {
+                pulse.classList.add('bg-red-100', 'scale-110');
+                micIcon.setAttribute('data-lucide', 'square');
+                statusText.innerHTML = `<span class="text-red-500 font-bold animate-pulse">正在錄音中...</span> (點擊停止)`;
+            } else {
+                pulse.classList.remove('bg-red-100', 'scale-110');
+                micIcon.setAttribute('data-lucide', 'mic');
+                statusText.textContent = "錄製完成！可重播或重新點擊錄音";
+            }
+            lucide.createIcons();
+        }
+
+        function startTimer() {
+            recordSeconds = 0;
+            const timerEl = document.getElementById('recordTimer');
+            timerEl.textContent = "00:00";
+            timerEl.classList.add('text-indigo-600');
+            recordTimerInterval = setInterval(() => {
+                recordSeconds++;
+                const mins = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+                const secs = String(recordSeconds % 60).padStart(2, '0');
+                timerEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(recordTimerInterval);
+            document.getElementById('recordTimer').classList.remove('text-indigo-600');
+        }
+
+        function handleAudioUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // 檢查檔案大小 (限制 20MB)
+            if (file.size > 20 * 1024 * 1024) {
+                showToast("檔案過大！請上傳 20MB 以下的音檔", true);
+                return;
+            }
+
+            document.getElementById('uploadFileName').textContent = `✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = () => {
+                uploadedAudioBase64 = reader.result.split(',')[1];
+                uploadedAudioMimeType = file.type || 'audio/mp3';
+                showToast("語音檔案讀取成功！已準備好進行分析。");
+            };
+        }
+
+        /* --- Gemini API 核心邏輯 --- */
+        async function processCounselingRecord() {
+            const currentApiKey = getEffectiveApiKey();
+            if (!currentApiKey) {
+                showToast("缺少 API Key！請點擊右上角齒輪設定金鑰。", true);
+                openSettingsModal();
+                return;
+            }
+
+            const student = students.find(s => s.id === selectedStudentId);
+            const fallbackText = document.getElementById('fallbackTextInput').value.trim();
+
+            if (!uploadedAudioBase64 && !fallbackText) {
+                showToast("請先錄製語音、上傳音檔，或在下方貼上草稿文字！", true);
+                return;
+            }
+
+            document.getElementById('loadingContainer').classList.remove('hidden');
+            document.getElementById('resultContainer').classList.add('hidden');
+            document.getElementById('generateBtn').disabled = true;
+
+            const studentContext = `目前輔導對象：${student.name}，學校與班級：${student.school}，主要障礙類別：${student.type}。`;
+            const systemPrompt = `你是一位深具同理心且專業的台灣特殊教育巡迴輔導教師。
+你的任務是讀取「輔導口述語音」或「草稿」，將其整理為符合台灣特教 IEP 規範的「專業巡迴輔導紀錄」。
+
+請遵循以下指導原則：
+1. 【語意潤飾】：轉譯為通順的繁體中文，保留學生情緒行為「關鍵事實」，去除贅詞。這部分放於【語音轉譯逐字稿】區。
+2. 【專業術語】：使用客觀、行為/認知學派特教術語（例：鬧脾氣 -> 挫折忍受度較低）。
+3. 【結構化格式】：使用 Markdown (### 標題)，固定輸出以下四區塊：
+   - ### 一、 學生基本現況與情緒狀態
+   - ### 二、 本次輔導焦點與教學目標
+   - ### 三、 採取的輔導策略與具體介入
+   - ### 四、 後續追蹤建議與協同合作事項`;
+
+            let userParts = [];
+            if (uploadedAudioBase64) {
+                userParts.push({
+                    text: `${studentContext}\n請基於這段音檔進行【語意潤飾】生成逐字稿，再轉成【IEP 結構化輔導紀錄】。`
+                });
+                userParts.push({
+                    inlineData: { mimeType: uploadedAudioMimeType, data: uploadedAudioBase64 }
+                });
+            } else {
+                userParts.push({
+                    text: `${studentContext}\n以下是老師的原始草稿：\n"${fallbackText}"\n\n請整理成流暢的逐字稿與專業特教紀錄。`
+                });
+            }
+
+            const payload = {
+                contents: [{ parts: userParts }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            try {
+                const response = await callGeminiWithRetry(payload, currentApiKey);
+                const generatedText = response.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!generatedText) throw new Error("無法解析 AI 生成結果");
+
+                parseAndDisplayResult(generatedText, student);
+                showToast("智慧輔導紀錄生成成功！");
+
+            } catch (error) {
+                showToast(error.message || "處理失敗，請確認 API 金鑰或網路狀態。", true);
+            } finally {
+                document.getElementById('loadingContainer').classList.add('hidden');
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        async function callGeminiWithRetry(payload, apiKey) {
+            let delay = 1000;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        return await response.json();
+                    } else {
+                        // 若為金鑰錯誤或請求格式錯誤，直接拋出不重試
+                        if (response.status === 400 || response.status === 401 || response.status === 403) {
+                            const errData = await response.json();
+                            throw new Error(`API 驗證失敗 (${response.status})：請檢查 API 金鑰是否正確填寫。`);
+                        }
+                    }
+                } catch (error) {
+                    if (error.message.includes('API 驗證失敗')) throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+            throw new Error("伺服器連線超時或繁忙，請稍後再試。");
+        }
+
+        function parseAndDisplayResult(text, student) {
+            let transcriptText = "";
+            let summaryText = "";
+
+            if (text.includes("###")) {
+                const parts = text.split(/(?=### 一、|### 一)/);
+                transcriptText = parts[0] ? parts[0].replace(/語音轉譯|逐字稿|【|】/g, '').trim() : "（已整合轉譯）";
+                summaryText = parts.slice(1).join('\n\n').trim();
+            } else {
+                transcriptText = "語音分析完成。請參照右側結構化紀錄。";
+                summaryText = text;
+            }
+
+            // 將 markdown 的換行轉換為 html br，將粗體 ** 轉為 <strong>
+            const formatHtml = (str) => {
+                return str.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-700">$1</strong>')
+                          .replace(/\n/g, '<br>');
+            }
+
+            document.getElementById('resultTitle').textContent = `待確認輔導草稿`;
+            document.getElementById('resultSubtitle').textContent = `輔導對象：${student.name} (${student.type})`;
+            
+            document.getElementById('transcriptOutput').innerHTML = formatHtml(transcriptText);
+            document.getElementById('structuredOutput').innerHTML = formatHtml(summaryText);
+
+            document.getElementById('resultContainer').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        /* --- 儲存與複製 --- */
+        function copyToClipboard() {
+            // 為了不帶 html 標籤，我們抓取 innerText 並處理
+            let structuredText = document.getElementById('structuredOutput').innerHTML;
+            // 簡單處理回純文字，將 <br> 轉回換行
+            structuredText = structuredText.replace(/<br\s*[\/]?>/gi, "\n").replace(/<[^>]+>/ig, "");
+            
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = structuredText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            showToast("紀錄已複製，可直接貼上至通報網或特教系統！");
+        }
+
+        function saveRecord() {
+            const transcript = document.getElementById('transcriptOutput').innerHTML;
+            const summary = document.getElementById('structuredOutput').innerHTML;
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            const newRecord = {
+                id: `r_${Date.now()}`,
+                studentId: selectedStudentId,
+                date: dateStr,
+                transcript: transcript,
+                summary: summary
+            };
+
+            savedRecords.unshift(newRecord);
+            renderHistory(selectedStudentId);
+            showToast("紀錄已成功存入歷史區！");
+            document.getElementById('resultContainer').classList.add('hidden');
+        }
+
+        /* --- 模態視窗(新增學生) --- */
+        function openAddStudentModal() {
+            const modal = document.getElementById('addStudentModal');
+            const content = document.getElementById('addStudentModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeAddStudentModal() {
+            const modal = document.getElementById('addStudentModal');
+            const content = document.getElementById('addStudentModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function saveNewStudent() {
+            const name = document.getElementById('newStudentName').value.trim();
+            const school = document.getElementById('newStudentSchool').value.trim();
+            const type = document.getElementById('newStudentType').value;
+
+            if (!name || !school) {
+                showToast("姓名與學校班級為必填欄位", true);
+                return;
+            }
+
+            const newStudent = {
+                id: `s_${Date.now()}`,
+                name: name,
+                school: school,
+                type: type,
+                active: false
+            };
+
+            students.push(newStudent);
+            renderStudents();
+            closeAddStudentModal();
+            showToast(`成功新增輔導學生：${name}`);
+            
+            document.getElementById('newStudentName').value = '';
+            document.getElementById('newStudentSchool').value = '';
+            
+            // 自動切換到新學生
+            selectStudent(newStudent.id);
+        }
+    </script>
+</body>
+</html>
